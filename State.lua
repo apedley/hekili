@@ -187,7 +187,11 @@ state.trinket = {
         },
         has_stat = {
             slot = "t1"
-        }
+        },
+
+        is = {
+            slot = "t1"
+        },
     },
 
     t2 = {
@@ -214,6 +218,10 @@ state.trinket = {
         has_stat = {
             slot = "t2",
         },
+
+        is = {
+            slot = "t2",
+        },
     },
 
     any = {},
@@ -236,7 +244,7 @@ state.trinket = {
     stat = {
     },
     has_stat = {
-    }
+    },
 }
 state.trinket.proc = state.trinket.stat
 state.trinket[1] = state.trinket.t1
@@ -314,7 +322,7 @@ local mt_trinket_any_stat = {
     end ]]
 
         if state.trinket.t1.has_stat[k] then return state.trinket.t1
-            elseif state.trinket.t2.has_stat[k] then return state.trinket.t2 end
+        elseif state.trinket.t2.has_stat[k] then return state.trinket.t2 end
         return no_trinket
     end
 }
@@ -332,6 +340,13 @@ local mt_trinket = {
             return class.trinkets[ t.id ].buff and state.buff[ class.trinkets[ t.id ].buff ].remains or 0
         elseif k == "has_cooldown" then
             return GetItemSpell( t.id ) ~= nil
+        elseif k == "cooldown" then
+            if t.usable and t.ability then
+                t.cooldown = state.cooldown[ t.ability ]
+            else
+                t.cooldown = state.cooldown.null_cooldown
+            end
+            return t.cooldown
         end
         return false
     end
@@ -341,7 +356,21 @@ setmetatable( state.trinket.t1, mt_trinket )
 setmetatable( state.trinket.t2, mt_trinket )
 
 
-local mt_trinket_cooldown = {
+local mt_trinket_is = {
+    __index = function( t, k )
+        local item = state.trinket[ t.slot ]
+
+        if item.usable and item.ability == k then return true end
+    
+        return false
+    end,
+}
+
+setmetatable( state.trinket.t1.is, mt_trinket_is )
+setmetatable( state.trinket.t2.is, mt_trinket_is )
+
+
+--[[ local mt_trinket_cooldown = {
     __index = function(t, k)
         if k == "duration" or k == "expires" then
             -- Refresh the ID in case we changed specs and ability is spec dependent.
@@ -369,7 +398,7 @@ local mt_trinket_cooldown = {
 }
 
 setmetatable( state.trinket.t1.cooldown, mt_trinket_cooldown )
-setmetatable( state.trinket.t2.cooldown, mt_trinket_cooldown )
+setmetatable( state.trinket.t2.cooldown, mt_trinket_cooldown ) ]]
 
 
 local mt_trinket_has_stacking_stat = {
@@ -5531,10 +5560,10 @@ function state.reset( dispName )
         v.true_remains = nil
     end
 
-    state.trinket.t1.cooldown.duration = nil
+    --[[ state.trinket.t1.cooldown.duration = nil
     state.trinket.t1.cooldown.expires = nil
     state.trinket.t2.cooldown.duration = nil
-    state.trinket.t2.cooldown.expires = nil
+    state.trinket.t2.cooldown.expires = nil ]]
 
     for k, v in pairs( state.debuff ) do
         for attr in pairs( default_debuff_values ) do
