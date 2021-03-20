@@ -46,6 +46,9 @@ state.encounterID = 0
 state.encounterName = "None"
 state.encounterDifficulty = 0
 
+state.aggro = false
+state.tanking = false
+
 state.delay = 0
 state.delayMin = 0
 state.delayMax = 60
@@ -158,7 +161,19 @@ state.target = {
     updated = true
 }
 
-state.movement = state.target -- lazy!
+state.movement = {}
+
+setmetatable( state.movement, {
+    __index = function( t, k )
+        if k == "distance" then
+            if state.buff.movement.up then return state.target.distance end
+            return 0
+        end
+
+        return state.target[ k ]
+    end
+} )
+
 state.sim.target = state.target
 state.toggle = {}
 state.totem = {}
@@ -167,6 +182,9 @@ state.totem = {}
 state.trinket = {
     t1 = {
         slot = "t1",
+        usable = false,
+        has_buff = false,
+        has_use_buff = false,
 
         cooldown = {
             slot = "t1"
@@ -196,6 +214,9 @@ state.trinket = {
 
     t2 = {
         slot = "t2",
+        usable = false,
+        has_buff = false,
+        has_use_buff = false,
 
         cooldown = {
             slot = "t2",
@@ -678,6 +699,7 @@ end
 do
     local cycle = {}
     local debug = function( ... ) if Hekili.ActiveDebug then Hekili:Debug( ... ) end end
+    local format = string.format
 
     function state.SetupCycle( ability, quiet )
         wipe( cycle )
@@ -715,7 +737,6 @@ do
 
             if not quiet then
                 debug( " - we will use the ability on a different target, if available, until %s expires at %.2f [+%.2f].", cycle.aura, cycle.expires, cycle.expires - state.query_time )
-                debug( " - confirm:  IsCycling? %s, %s", tostring( state.IsCycling() ), tostring( state.IsCycling( aura ) ) ) 
             end
         else
             if not quiet then debug( " - cycle aura appears to be down, so we're sticking with our current target." ) end
@@ -739,22 +760,23 @@ do
         return true
     end
 
-    function state.IsCycling( aura )
+    function state.IsCycling( aura, quiet )
         if not cycle.aura then
-            -- debug( "no cycle.aura" )
-            return false end
+            return false, "cycle.aura is nil"
+        end
         if aura and cycle.aura ~= aura then
-            debug( "cycle.aura ~= '%s'", aura )
-            return false end
+            if not quiet then debug( "cycle.aura ~= '%s'", aura ) end
+            return false, format( "cycle aura (%s) is not '%s'", cycle.aura or "none", aura )
+        end
         if state.cycle_enemies == 1 then
-            debug( "cycle_enemies == 1" )
-            return false end
+            return false, "cycle_enemies == 1"
+        end
         if cycle.expires < state.query_time then
-            debug( "cycle aura expired" )
-            return false end
+            return false, format( "cycle aura (%s) expires before current time", cycle.aura )
+        end
         if state.active_dot[ cycle.aura ] >= state.cycle_enemies then
-            debug( "active_dot[%d] >= cycle_enemies[%d]", state.active_dot[ cycle.aura ], state.cycle_enemies )
-            return false end
+            return false, format( "active_dot[%d] >= cycle_enemies[%d]", state.active_dot[ cycle.aura ], state.cycle_enemies )
+        end
 
         return true
     end
@@ -1435,8 +1457,8 @@ do
                 recheckHelper( workTable, script.Recheck() )
             end
 
-            --[[ This was found to be CPU intensive (when repeated a LOT) without commensurate benefit.
-            if script.Variables then
+            -- This can be CPU intensive but is needed for some APLs (i.e., Unholy).
+            if script.Variables and state.settings.enhancedRecheck then
                 -- if Hekili.ActiveDebug then table.insert( steps, debugprofilestop() ) end
                 for i, var in ipairs( script.Variables ) do
                     local varIDs = state:GetVariableIDs( var )
@@ -1451,7 +1473,7 @@ do
                     end
                     -- if Hekili.ActiveDebug then table.insert( steps, debugprofilestop() ) end
                 end
-            end ]]
+            end
         end
 
         -- if Hekili.ActiveDebug then table.insert( steps, debugprofilestop() ) end
@@ -2677,8 +2699,8 @@ local mt_default_cooldown = {
             if id > 0 then start, duration = GetCooldown( id ) end
 
             if t.key ~= "global_cooldown" then
-            local gcdStart, gcdDuration = GetSpellCooldown( 61304 )
-            if gcdStart == start and gcdDuration == duration then start, duration = 0, 0 end
+                local gcdStart, gcdDuration = GetSpellCooldown( 61304 )
+                if gcdStart == start and gcdDuration == duration then start, duration = 0, 0 end
             end
 
             local true_duration = duration
@@ -2883,13 +2905,13 @@ ns.metatables.mt_dot = mt_dot
 
 local mt_gcd = {
     __index = function( t, k )
-        if k == "execute" then
+        if k == "execute" then            
             local ability = state.this_action and class.abilities[ state.this_action ]
 
             -- We can specify this for any ability, if we want.
             if ability and ability.gcdTime then return ability.gcdTime end
 
-            local gcd = ability and ability.gcd or "spell"
+            local gcd = ( state.this_action == "wait" and "spell" ) or ( ability and ability.gcd or "spell" )
 
             if gcd == "off" then return 0 end
             if gcd == "totem" then return 1 end
@@ -4148,7 +4170,7 @@ local mt_default_debuff = {
     __index = function( t, k )
         local aura = class.auras[ t.key ]
 
-        if state.IsCycling( t.key ) and cycle_debuff[ k ] ~= nil then
+        if state.IsCycling( t.key, true ) and cycle_debuff[ k ] ~= nil then
             return cycle_debuff[ k ]
         end
 
@@ -5231,7 +5253,7 @@ do
             -- Spend resources.
             ns.spendResources( action )
 
-            local wasCycling = self.IsCycling()
+            local wasCycling = self.IsCycling( nil, true )
             local expires, minTTD, maxTTD, aura
 
             if wasCycling then
@@ -5633,7 +5655,8 @@ function state.reset( dispName )
     state.target.health.current = nil
     state.target.health.max = nil
 
-    state.tanking = state.role.tank and ( UnitThreatSituation( "player" ) or 0 ) > 1
+    state.aggro = ( UnitThreatSituation( "player" ) or 0 ) > 1
+    state.tanking = state.role.tank and state.aggro
 
     -- range checks
     state.target.minR = nil
