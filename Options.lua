@@ -5205,7 +5205,8 @@ do
                 packDesc = {
                     type = "description",
                     name = "Priorities (or action packs) are bundles of action lists used to make recommendations for each specialization.  " ..
-                        "They can be customized and shared.",
+                        "They can be customized and shared.  |cFFFF0000Imported SimulationCraft priorities often require some translation before " ..
+                        "they will work with this addon.  No support is offered for customized or imported priorities.|r",
                     order = 1,
                     fontSize = "medium",
                 },
@@ -9713,7 +9714,7 @@ local function Sanitize( segment, i, line, warnings )
         table.insert( warnings, "Line " .. line .. ": Converted 'covenant.X.enabled' to 'covenant.X' (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "talent%.([%w_]+)([%+%-%*%%/&|= ()<>])", "talent.%1.enabled%2" )
+    i, times = i:gsub( "talent%.([%w_]+)([%+%-%*%%/%&%|= ()<>])", "talent.%1.enabled%2" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'talent.X' to 'talent.X.enabled' (" .. times .. "x)." )
     end
@@ -9723,7 +9724,7 @@ local function Sanitize( segment, i, line, warnings )
         table.insert( warnings, "Line " .. line .. ": Converted 'talent.X' to 'talent.X.enabled' at EOL (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "legendary%.([%w_]+)([%+%-%*%%/&|= ()<>])", "legendary.%1.enabled%2" )
+    i, times = i:gsub( "legendary%.([%w_]+)([%+%-%*%%/%&%|= ()<>])", "legendary.%1.enabled%2" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'legendary.X' to 'legendary.X.enabled' (" .. times .. "x)." )
     end
@@ -9733,7 +9734,7 @@ local function Sanitize( segment, i, line, warnings )
         table.insert( warnings, "Line " .. line .. ": Converted 'legendary.X' to 'legendary.X.enabled' at EOL (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "([^%.])runeforge%.([%w_]+)([%+%-%*%%/=&| ()<>])", "%1runeforge.%2.enabled%3" )
+    i, times = i:gsub( "([^%.])runeforge%.([%w_]+)([%+%-%*%%/=%&%| ()<>])", "%1runeforge.%2.enabled%3" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'runeforge.X' to 'runeforge.X.enabled' (" .. times .. "x)." )
     end
@@ -9743,7 +9744,7 @@ local function Sanitize( segment, i, line, warnings )
         table.insert( warnings, "Line " .. line .. ": Converted 'runeforge.X' to 'runeforge.X.enabled' at EOL (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "^runeforge%.([%w_]+)([%+%-%*%%/&|= ()<>)])", "runeforge.%1.enabled%2" )
+    i, times = i:gsub( "^runeforge%.([%w_]+)([%+%-%*%%/%&%|= ()<>)])", "runeforge.%1.enabled%2" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'runeforge.X' to 'runeforge.X.enabled' (" .. times .. "x)." )
     end
@@ -9753,12 +9754,12 @@ local function Sanitize( segment, i, line, warnings )
         table.insert( warnings, "Line " .. line .. ": Converted 'runeforge.X' to 'runeforge.X.enabled' at EOL (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "conduit%.([%w_]+)([%+%-%*%%/&|= ()<>)])", "conduit.%1.enabled%2" )
+    i, times = i:gsub( "([^a-z0-9_])conduit%.([%w_]+)([%+%-%*%%/&|= ()<>)])", "%1conduit.%2.enabled%3" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'conduit.X' to 'conduit.X.enabled' (" .. times .. "x)." )
     end
 
-    i, times = i:gsub( "conduit%.([%w_]+)$", "conduit.%1.enabled" )
+    i, times = i:gsub( "([^a-z0-9_])conduit%.([%w_]+)$", "%1conduit.%2.enabled" )
     if times > 0 then
         table.insert( warnings, "Line " .. line .. ": Converted 'conduit.X' to 'conduit.X.enabled' at EOL (" .. times .. "x)." )
     end
